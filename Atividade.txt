@@ -1,0 +1,503 @@
+﻿EX 1:
+
+
+CREATE TABLE ingredientes (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    quantidade INT NOT NULL
+);
+
+
+CREATE TABLE consumo (
+    id SERIAL PRIMARY KEY,
+    id_ingrediente INT NOT NULL,
+    quantidade_utilizada INT NOT NULL,
+    CONSTRAINT fk_ingrediente FOREIGN KEY (id_ingrediente) REFERENCES ingredientes(id)
+);
+
+
+INSERT INTO ingredientes (id, nome, quantidade) VALUES
+(1, 'Pão de Hambúrguer', 150),
+(2, 'Hambúrguer Bovino', 120),
+(3, 'Queijo Cheddar', 100),
+(4, 'Alface', 80),
+(5, 'Tomate', 90);
+
+
+INSERT INTO consumo (id, id_ingrediente, quantidade_utilizada) VALUES
+(1, 1, 10),
+(2, 2, 10),
+(3, 3, 8);
+
+
+CREATE OR REPLACE FUNCTION fn_atualiza_ingredientes()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE ingredientes
+    SET quantidade = quantidade - NEW.quantidade_utilizada
+    WHERE id = NEW.id_ingrediente;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_atualiza_ingredientes
+AFTER INSERT ON consumo
+FOR EACH ROW
+EXECUTE FUNCTION fn_atualiza_ingredientes();
+
+
+CREATE OR REPLACE FUNCTION fn_lista_consumo()
+RETURNS TABLE (
+    nome_ingrediente VARCHAR,
+    quantidade_restante INT,
+    quantidade_utilizada INT,
+    quantidade_original INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        i.nome::VARCHAR,
+        i.quantidade AS quantidade_restante,
+        c.quantidade_utilizada,
+        (i.quantidade + c.quantidade_utilizada) AS quantidade_original
+    FROM consumo c
+    JOIN ingredientes i ON c.id_ingrediente = i.id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+INSERT INTO consumo (id_ingrediente, quantidade_utilizada) VALUES (5, 5);
+
+
+SELECT * FROM fn_lista_consumo();
+
+
+
+
+
+
+
+
+
+
+
+
+ex 2:
+
+
+
+
+CREATE TABLE livros (
+    id SERIAL PRIMARY KEY,
+    titulo VARCHAR(150) NOT NULL,
+    quantidade INT NOT NULL
+);
+
+
+CREATE TABLE emprestimos (
+    id SERIAL PRIMARY KEY,
+    id_livro INT NOT NULL,
+    quantidade_emprestada INT NOT NULL,
+    CONSTRAINT fk_livro FOREIGN KEY (id_livro) REFERENCES livros(id)
+);
+
+
+INSERT INTO livros (id, titulo, quantidade) VALUES
+(1, 'Dom Casmurro', 25),
+(2, 'O Pequeno Príncipe', 18),
+(3, 'Clean Code', 12),
+(4, 'Banco de Dados', 20),
+(5, 'Algoritmos', 15);
+
+
+INSERT INTO emprestimos (id, id_livro, quantidade_emprestada) VALUES
+(1, 1, 2),
+(2, 3, 1),
+(3, 5, 3);
+
+
+CREATE OR REPLACE FUNCTION fn_atualiza_livros()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE livros
+    SET quantidade = quantidade - NEW.quantidade_emprestada
+    WHERE id = NEW.id_livro;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_atualiza_livros
+AFTER INSERT ON emprestimos
+FOR EACH ROW
+EXECUTE FUNCTION fn_atualiza_livros();
+
+
+CREATE OR REPLACE FUNCTION fn_lista_emprestimos()
+RETURNS TABLE (
+    titulo_livro VARCHAR,
+    quantidade_disponivel INT,
+    quantidade_emprestada INT,
+    quantidade_original INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        l.titulo::VARCHAR,
+        l.quantidade AS quantidade_disponivel,
+        e.quantidade_emprestada,
+        (l.quantidade + e.quantidade_emprestada) AS quantidade_original
+    FROM emprestimos e
+    JOIN livros l ON e.id_livro = l.id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+INSERT INTO emprestimos (id_livro, quantidade_emprestada) VALUES (2, 2);
+
+
+SELECT * FROM fn_lista_emprestimos();
+
+
+
+
+
+
+ex 3:
+
+
+
+
+CREATE TABLE produtos (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    estoque INT NOT NULL
+);
+
+
+CREATE TABLE vendas (
+    id SERIAL PRIMARY KEY,
+    id_produto INT NOT NULL,
+    quantidade_vendida INT NOT NULL,
+    CONSTRAINT fk_produto FOREIGN KEY (id_produto) REFERENCES produtos(id)
+);
+
+
+INSERT INTO produtos (id, nome, estoque) VALUES
+(1, 'Mouse Gamer', 40),
+(2, 'Teclado Mecânico', 30),
+(3, 'Monitor 24"', 18),
+(4, 'SSD 480GB', 25),
+(5, 'Webcam Full HD', 22);
+
+
+INSERT INTO vendas (id, id_produto, quantidade_vendida) VALUES
+(1, 2, 4),
+(2, 4, 3),
+(3, 1, 5);
+
+
+CREATE OR REPLACE FUNCTION fn_atualiza_estoque()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE produtos
+    SET estoque = estoque - NEW.quantidade_vendida
+    WHERE id = NEW.id_produto;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_atualiza_estoque
+AFTER INSERT ON vendas
+FOR EACH ROW
+EXECUTE FUNCTION fn_atualiza_estoque();
+
+
+CREATE OR REPLACE FUNCTION fn_relatorio_vendas()
+RETURNS TABLE (
+    nome_produto VARCHAR,
+    estoque_atual INT,
+    quantidade_vendida INT,
+    estoque_original INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.nome::VARCHAR,
+        p.estoque AS estoque_atual,
+        v.quantidade_vendida,
+        (p.estoque + v.quantidade_vendida) AS estoque_original
+    FROM vendas v
+    JOIN produtos p ON v.id_produto = p.id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+INSERT INTO vendas (id_produto, quantidade_vendida) VALUES (5, 6);
+
+
+SELECT * FROM fn_relatorio_vendas();
+
+
+
+
+
+
+
+
+
+
+EX 4:
+
+
+CREATE TABLE contas (
+    id SERIAL PRIMARY KEY,
+    cliente VARCHAR(100) NOT NULL,
+    saldo NUMERIC(10,2) NOT NULL
+);
+
+
+CREATE TABLE saques (
+    id SERIAL PRIMARY KEY,
+    id_conta INT NOT NULL,
+    valor_saque NUMERIC(10,2) NOT NULL,
+    CONSTRAINT fk_conta FOREIGN KEY (id_conta) REFERENCES contas(id)
+);
+
+
+INSERT INTO contas (id, cliente, saldo) VALUES
+(1, 'Ana Souza', 3500),
+(2, 'Carlos Lima', 4200),
+(3, 'Mariana Alves', 2800),
+(4, 'João Pedro', 5100),
+(5, 'Fernanda Silva', 3900);
+
+
+INSERT INTO saques (id, id_conta, valor_saque) VALUES
+(1, 1, 500),
+(2, 3, 300),
+(3, 5, 700);
+
+
+CREATE OR REPLACE FUNCTION fn_atualiza_saldo()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE contas
+    SET saldo = saldo - NEW.valor_saque
+    WHERE id = NEW.id_conta;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_atualiza_saldo
+AFTER INSERT ON saques
+FOR EACH ROW
+EXECUTE FUNCTION fn_atualiza_saldo();
+
+
+CREATE OR REPLACE FUNCTION fn_relatorio_saques()
+RETURNS TABLE (
+    nome_cliente VARCHAR,
+    saldo_atual NUMERIC,
+    valor_saque NUMERIC,
+    saldo_antes NUMERIC
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.cliente::VARCHAR,
+        c.saldo AS saldo_atual,
+        s.valor_saque,
+        (c.saldo + s.valor_saque) AS saldo_antes
+    FROM saques s
+    JOIN contas c ON s.id_conta = c.id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+INSERT INTO saques (id_conta, valor_saque) VALUES (2, 450.00);
+
+
+SELECT * FROM fn_relatorio_saques();
+
+
+
+
+Ex 5:
+
+
+
+
+
+
+CREATE TABLE cursos (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    vagas INT NOT NULL
+);
+
+
+CREATE TABLE matriculas (
+    id SERIAL PRIMARY KEY,
+    id_curso INT NOT NULL,
+    quantidade INT NOT NULL,
+    CONSTRAINT fk_curso FOREIGN KEY (id_curso) REFERENCES cursos(id)
+);
+
+
+INSERT INTO cursos (id, nome, vagas) VALUES
+(1, 'Banco de Dados', 40),
+(2, 'Programação Web', 35),
+(3, 'Redes de Computadores', 30),
+(4, 'Inteligência Artificial', 25),
+(5, 'Segurança da Informação', 20);
+
+
+INSERT INTO matriculas (id, id_curso, quantidade) VALUES
+(1, 1, 5),
+(2, 2, 8),
+(3, 5, 4);
+
+
+CREATE OR REPLACE FUNCTION fn_atualiza_vagas()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE cursos
+    SET vagas = vagas - NEW.quantidade
+    WHERE id = NEW.id_curso;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_atualiza_vagas
+AFTER INSERT ON matriculas
+FOR EACH ROW
+EXECUTE FUNCTION fn_atualiza_vagas();
+
+
+CREATE OR REPLACE FUNCTION fn_relatorio_matriculas()
+RETURNS TABLE (
+    nome_curso VARCHAR,
+    vagas_restantes INT,
+    quantidade_matriculada INT,
+    quantidade_inicial INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.nome::VARCHAR,
+        c.vagas AS vagas_restantes,
+        m.quantidade AS quantidade_matriculada,
+        (c.vagas + m.quantidade) AS quantidade_inicial
+    FROM matriculas m
+    JOIN cursos c ON m.id_curso = c.id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+INSERT INTO matriculas (id_curso, quantidade) VALUES (4, 3);
+
+
+SELECT * FROM fn_relatorio_matriculas();
+
+
+
+
+
+
+EX 6:
+
+
+
+
+CREATE TABLE clientes (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL
+);
+
+
+CREATE TABLE produtos (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    estoque INT NOT NULL
+);
+
+
+CREATE TABLE pedidos (
+    id SERIAL PRIMARY KEY,
+    id_cliente INT NOT NULL,
+    id_produto INT NOT NULL,
+    quantidade INT NOT NULL,
+    CONSTRAINT fk_pedido_cliente FOREIGN KEY (id_cliente) REFERENCES clientes(id),
+    CONSTRAINT fk_pedido_produto FOREIGN KEY (id_produto) REFERENCES produtos(id)
+);
+
+
+INSERT INTO clientes (id, nome) VALUES
+(1, 'Lucas Martins'),
+(2, 'Amanda Ribeiro'),
+(3, 'Rafael Costa'),
+(4, 'Juliana Souza');
+
+
+INSERT INTO produtos (id, nome, estoque) VALUES
+(1, 'Notebook', 20),
+(2, 'Mouse', 50),
+(3, 'Teclado', 35),
+(4, 'Monitor', 18);
+
+
+INSERT INTO pedidos (id, id_cliente, id_produto, quantidade) VALUES
+(1, 1, 2, 4),
+(2, 3, 1, 2),
+(3, 2, 4, 1);
+
+
+CREATE OR REPLACE FUNCTION fn_atualiza_estoque()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE produtos
+    SET estoque = estoque - NEW.quantidade
+    WHERE id = NEW.id_produto;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE TRIGGER trg_atualiza_estoque
+AFTER INSERT ON pedidos
+FOR EACH ROW
+EXECUTE FUNCTION fn_atualiza_estoque();
+
+
+CREATE OR REPLACE FUNCTION fn_relatorio_pedidos()
+RETURNS TABLE (
+    nome_cliente VARCHAR,
+    nome_produto VARCHAR,
+    quantidade_comprada INT,
+    estoque_restante INT,
+    estoque_original INT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        cl.nome::VARCHAR,
+        p.nome::VARCHAR,
+        pd.quantidade,
+        p.estoque,
+        (p.estoque + pd.quantidade)
+    FROM pedidos pd
+    JOIN clientes cl ON pd.id_cliente = cl.id
+    JOIN produtos p ON pd.id_produto = p.id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+INSERT INTO pedidos (id_cliente, id_produto, quantidade) VALUES (4, 3, 3);
+
+
+SELECT * FROM fn_relatorio_pedidos();
